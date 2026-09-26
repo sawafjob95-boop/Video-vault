@@ -53,44 +53,261 @@ const CATS=[
  ["cafe","☕ Cafe"],["ideas","💡 Ideas"],["fitness","🏋️ Fitness"],
  ["ent","😂 Entertainment"],["important","⭐ Important"]
 ];
+
 let data=JSON.parse(localStorage.getItem("videoVault")||"[]");
 let active="all", editId=null;
+
 const $=id=>document.getElementById(id);
-function persist(){localStorage.setItem("videoVault",JSON.stringify(data));}
+
+function persist(){
+  localStorage.setItem("videoVault",JSON.stringify(data));
+}
+
 function renderCats(){
- $("cats").innerHTML=CATS.map(c=>`<button class="cat ${active===c[0]?'active':''}" onclick="setCat('${c[0]}')">${c[1]}</button>`).join("");
- $("cat").innerHTML=CATS.filter(c=>c[0]!=="all").map(c=>`<option value="${c[0]}">${c[1]}</option>`).join("");
+  $("cats").innerHTML=CATS.map(c=>
+    `<button class="cat ${active===c[0]?'active':''}" onclick="setCat('${c[0]}')">${c[1]}</button>`
+  ).join("");
+
+  $("cat").innerHTML=CATS
+    .filter(c=>c[0]!=="all")
+    .map(c=>`<option value="${c[0]}">${c[1]}</option>`)
+    .join("");
 }
-function setCat(c){active=c;render();renderCats()}
+
+function setCat(c){
+  active=c;
+  render();
+  renderCats();
+}
+
 function render(){
- const q=$("search").value.trim().toLowerCase();
- let items=data.filter(v=>(active==="all"||v.cat===active)&&(v.title+" "+v.note).toLowerCase().includes(q));
- $("total").textContent=data.length;$("favCount").textContent=data.filter(v=>v.fav).length;
- $("list").innerHTML=items.length?items.map(v=>`
- <article class="card">
-  <div class="row"><div><div class="title">${esc(v.title)}</div><div class="meta">${catName(v.cat)} · ${esc(v.platform||"Link")}</div></div>
-  <button class="fav" onclick="toggleFav('${v.id}')">${v.fav?"⭐":"☆"}</button></div>
-  ${v.note?`<div class="note">${esc(v.note)}</div>`:""}
-  <div class="actions"><button class="btn" onclick="window.open('${safeUrl(v.url)}','_blank')">▶ فتح الفيديو</button><button class="btn" onclick="editVideo('${v.id}')">✏️ تعديل</button><button class="btn danger" onclick="delVideo('${v.id}')">حذف</button></div>
- </article>`).join(""):`<div class="empty">مفيش فيديوهات هنا لسه.<br>اضغط ＋ واحفظ أول فيديو.</div>`;
+  const q=$("search").value.trim().toLowerCase();
+
+  let items=data.filter(v=>
+    (active==="all"||v.cat===active) &&
+    (v.title+" "+v.note).toLowerCase().includes(q)
+  );
+
+  $("total").textContent=data.length;
+  $("favCount").textContent=data.filter(v=>v.fav).length;
+
+  $("list").innerHTML=items.length
+    ? items.map(v=>`
+      <article class="card">
+        <div class="row">
+          <div>
+            <div class="title">${esc(v.title)}</div>
+            <div class="meta">${catName(v.cat)} · ${esc(v.platform||"Link")}</div>
+          </div>
+
+          <button class="fav" onclick="toggleFav('${v.id}')">
+            ${v.fav?"⭐":"☆"}
+          </button>
+        </div>
+
+        ${v.note?`<div class="note">${esc(v.note)}</div>`:""}
+
+        <div class="actions">
+          <button class="btn" onclick="window.open('${safeUrl(v.url)}','_blank')">
+            ▶ فتح الفيديو
+          </button>
+
+          <button class="btn" onclick="editVideo('${v.id}')">
+            ✏️ تعديل
+          </button>
+
+          <button class="btn danger" onclick="delVideo('${v.id}')">
+            حذف
+          </button>
+        </div>
+      </article>
+    `).join("")
+    : `<div class="empty">
+        مفيش فيديوهات هنا لسه.<br>
+        اضغط ＋ واحفظ أول فيديو.
+      </div>`;
 }
-function catName(c){return (CATS.find(x=>x[0]===c)||["",""])[1]}
-function platform(url){try{let h=new URL(url).hostname;return h.includes("tiktok")?"TikTok":h.includes("facebook")?"Facebook":h.replace("www.","")}catch{return"Link"}}
-function safeUrl(u){return /^https?:\/\//i.test(u)?u.replace(/'/g,"%27"):"#"}
-function esc(s){return String(s||"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]))}
-function openAdd(){editId=null;$("modalTitle").textContent="إضافة فيديو";$("title").value="";$("url").value="";$("note").value="";$("cat").value="work";dlg.showModal()}
+
+function catName(c){
+  return (CATS.find(x=>x[0]===c)||["",""])[1];
+}
+
+function platform(url){
+  try{
+    let h=new URL(url).hostname.toLowerCase();
+
+    if(h.includes("youtube")) return "YouTube";
+    if(h.includes("youtu.be")) return "YouTube";
+    if(h.includes("tiktok")) return "TikTok";
+    if(h.includes("facebook")) return "Facebook";
+    if(h.includes("instagram")) return "Instagram";
+    if(h.includes("x.com") || h.includes("twitter")) return "X";
+    if(h.includes("linkedin")) return "LinkedIn";
+
+    return h.replace("www.","");
+  }catch{
+    return "Link";
+  }
+}
+
+function safeUrl(u){
+  return /^https?:\/\//i.test(u)
+    ? u.replace(/'/g,"%27")
+    : "#";
+}
+
+function esc(s){
+  return String(s||"").replace(/[&<>"']/g,m=>({
+    "&":"&amp;",
+    "<":"&lt;",
+    ">":"&gt;",
+    '"':"&quot;",
+    "'":"&#039;"
+  }[m]));
+}
+
+function openAdd(){
+  editId=null;
+
+  $("modalTitle").textContent="إضافة فيديو";
+  $("title").value="";
+  $("url").value="";
+  $("note").value="";
+  $("cat").value="work";
+
+  dlg.showModal();
+}
+
 function saveVideo(){
- let title=$("title").value.trim(),url=$("url").value.trim(),cat=$("cat").value,note=$("note").value.trim();
- if(!title||!url){alert("اكتب اسم الفيديو واللينك");return}
- if(editId){let v=data.find(x=>x.id===editId);Object.assign(v,{title,url,cat,note,platform:platform(url)})}
- else data.unshift({id:Date.now().toString(),title,url,cat,note,platform:platform(url),fav:false});
- persist();dlg.close();render();
+
+  let title=$("title").value.trim();
+  let url=$("url").value.trim();
+  let cat=$("cat").value;
+  let note=$("note").value.trim();
+
+  if(!title||!url){
+    alert("اكتب اسم الفيديو واللينك");
+    return;
+  }
+
+  if(editId){
+
+    let v=data.find(x=>x.id===editId);
+
+    Object.assign(v,{
+      title,
+      url,
+      cat,
+      note,
+      platform:platform(url)
+    });
+
+  }else{
+
+    data.unshift({
+      id:Date.now().toString(),
+      title,
+      url,
+      cat,
+      note,
+      platform:platform(url),
+      fav:false
+    });
+
+  }
+
+  persist();
+  dlg.close();
+  render();
 }
-function editVideo(id){let v=data.find(x=>x.id===id);editId=id;$("modalTitle").textContent="تعديل الفيديو";$("title").value=v.title;$("url").value=v.url;$("cat").value=v.cat;$("note").value=v.note||"";dlg.showModal()}
-function delVideo(id){if(confirm("تحب تحذف الفيديو؟")){data=data.filter(v=>v.id!==id);persist();render()}}
-function toggleFav(id){let v=data.find(x=>x.id===id);v.fav=!v.fav;persist();render()}
+
+function editVideo(id){
+
+  let v=data.find(x=>x.id===id);
+
+  editId=id;
+
+  $("modalTitle").textContent="تعديل الفيديو";
+  $("title").value=v.title;
+  $("url").value=v.url;
+  $("cat").value=v.cat;
+  $("note").value=v.note||"";
+
+  dlg.showModal();
+}
+
+function delVideo(id){
+
+  if(confirm("تحب تحذف الفيديو؟")){
+    data=data.filter(v=>v.id!==id);
+    persist();
+    render();
+  }
+
+}
+
+function toggleFav(id){
+
+  let v=data.find(x=>x.id===id);
+
+  if(v){
+    v.fav=!v.fav;
+    persist();
+    render();
+  }
+
+}
+
+
+/* =========================================
+   استقبال الفيديو من iPhone Shortcut
+   ========================================= */
+
+function receiveSharedVideo(){
+
+  const params=new URLSearchParams(window.location.search);
+  const sharedUrl=params.get("add");
+
+  if(!sharedUrl) return;
+
+  // التأكد إن اللينك فعلاً URL
+  if(!/^https?:\/\//i.test(sharedUrl)){
+    return;
+  }
+
+  // افتح نافذة الإضافة
+  editId=null;
+
+  $("modalTitle").textContent="إضافة فيديو من المشاركة";
+
+  $("title").value="فيديو من " + platform(sharedUrl);
+
+  $("url").value=sharedUrl;
+
+  $("cat").value="work";
+
+  $("note").value="";
+
+  dlg.showModal();
+
+  // امسح ?add= من العنوان
+  // عشان لو عمل Refresh مايفتحش نفس الفيديو مرة تانية
+  window.history.replaceState({},document.title,window.location.pathname);
+
+}
+
+
+/* البحث */
 $("search").addEventListener("input",render);
-renderCats();render();
+
+
+/* تشغيل الموقع */
+renderCats();
+render();
+
+
+/* فحص هل الفيديو جاي من Shortcut */
+setTimeout(receiveSharedVideo,300);
 </script>
 </body>
 </html>
